@@ -3,9 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Survey extends Model
 {
+    // Remove SoftDeletes trait if you want only permanent deletion
+    // use SoftDeletes;
+    
     protected $fillable = ['user_id', 'status'];
 
     public function user()
@@ -18,21 +22,37 @@ class Survey extends Model
         return $this->hasMany(ExteriorPhoto::class);
     }
 
-    // updating
     public function interiorCategories()
+    {
+        return $this->hasMany(SurveyIntCat::class);
+    }
+
+    public function exteriorImages()
+    {
+        return $this->hasMany(SurveyExtImage::class);
+    }
+
+    public function exteriorFeatures()
+    {
+        return $this->belongsToMany(ExteriorFeature::class, 'survey_ext_features', 'survey_id', 'feature_id')
+                    ->using(SurveyExtFeature::class)
+                    ->withTimestamps();
+    }
+
+   protected static function booted()
 {
-    return $this->hasMany(SurveyIntCat::class);
+    static::deleting(function ($survey) {
+        $survey->exteriorPhotos()->forceDelete();
+        
+        $survey->interiorCategories()->each(function ($category) {
+            $category->images()->forceDelete();
+            $category->features()->forceDelete();
+            $category->forceDelete();
+        });
+
+        $survey->exteriorImages()->forceDelete();
+        $survey->exteriorFeatures()->detach();
+    });
 }
 
-public function exteriorImages()
-{
-    return $this->hasMany(SurveyExtImage::class);
-}
-
-public function exteriorFeatures()
-{
-    return $this->belongsToMany(ExteriorFeature::class, 'survey_ext_features', 'survey_id', 'feature_id')
-                ->using(SurveyExtFeature::class)
-                ->withTimestamps();
-}
 }

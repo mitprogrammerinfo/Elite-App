@@ -14,18 +14,21 @@ Route::prefix('auth')->group(function () {
         Route::post('/verify-email', 'verifyEmail');
         Route::post('/forgot-password', 'forgotPassword');
         Route::post('/verify-otp', 'verifyOtp');
+        Route::post('/resend-otp', 'resendOtp');
         Route::middleware('auth:sanctum')->post('/logout', 'logout'); 
+        Route::middleware('auth:sanctum')->post('/update-password', 'updatePassword');
         Route::middleware('auth:sanctum')->post('/reset-password', 'resetPassword'); 
     });
 
     // Google Auth
     Route::controller(GoogleAuthController::class)->group(function () {
-        Route::get('/google', 'redirectToGoogle');
         Route::get('/google/callback', 'handleGoogleCallback');
+        // Route::post('/google-login', 'googleLogin');
     });
 });
-//Route::middleware('auth:sanctum')->get('/exterior/features', [SurveyController::class, 'getExteriorFeatures']);
+Route::post('/auth/google-login', [GoogleAuthController::class, 'googleLogin']);
 
+Route::middleware('auth:sanctum')->post('/profile', [AuthController::class, 'updateProfile']);
 // Protected routes (Sanctum authenticated)
 Route::middleware('auth:sanctum')->group(function () {
     // User routes
@@ -33,6 +36,7 @@ Route::middleware('auth:sanctum')->group(function () {
         return $request->user();
     });
 
+    Route::get('/surveys/incomplete', [SurveyController::class, 'getIncompleteSurveys']);
     // Survey Management
     Route::prefix('surveys')->controller(SurveyController::class)->group(function () {
         Route::get('/', 'index');
@@ -52,7 +56,23 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/{survey}/exterior', 'saveExteriorSurvey');
         // Completion
         Route::post('/{survey}/complete', 'completeSurvey');
+        // survey status
+        Route::get('/status/{surveyId}', 'getSurveyStatus');
+
+        //update and delete survey
+        Route::post('/update-survey/{surveyId}', 'updateSurvey');
+        Route::delete('/delete-survey/{surveyId}', 'deleteSurvey');
+
+       Route::get('/single-survey/{surveyId}', 'getSurveyById');
+       
     });
 });
+
+Route::get('/public-images', [SurveyController::class, 'getAllPublicImages']);
+
+Route::middleware('auth:sanctum')->get('/user/profile', [AuthController::class, 'getProfile']);
+Route::middleware('auth:sanctum')->get('/completed-surveys', [SurveyController::class, 'getCompletedSurveys']);
+
+
 
 

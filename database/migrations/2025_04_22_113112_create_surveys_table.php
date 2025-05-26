@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('surveys', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained();
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->enum('status', ['exterior_photos', 'interior_selections', 'exterior_features', 'completed']);
             $table->timestamps();
         });

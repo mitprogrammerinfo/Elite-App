@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\UserResource;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
@@ -15,7 +17,8 @@ class AuthController extends Controller
     public function register(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'name'           => 'required|string|max:255',
+            'first_name'     => 'required|string|max:255',
+            'last_name'      => 'required|string|max:255',
             'email'          => 'required|email|unique:users,email',
             'password'       => 'required|string|min:6|confirmed',
             'phone_number'   => 'required|string|max:15',
@@ -35,7 +38,8 @@ class AuthController extends Controller
         $verificationCode = rand(1000, 9999);
 
         $user = User::create([
-            'name'              => $request->name,
+            'first_name'        => $request->first_name,
+            'last_name'        => $request->last_name,
             'email'             => $request->email,
             'password'          => Hash::make($request->password),
             'phone_number'      => $request->phone_number,
@@ -52,9 +56,10 @@ class AuthController extends Controller
             $message->to($user->email)
                     ->subject('Email Verification Code');
         });
-
+        $token = $user->createToken('auth_token')->plainTextToken;
         return response()->json([
             'message' => 'User registered successfully. Please check your email for the verification code.',
+            'access_token' => $token,
             'user_id' => $user->id
         ]);
     }
@@ -72,12 +77,8 @@ class AuthController extends Controller
             $user->email_verified_at = now();
             $user->verification_code = null;
             $user->save();
-
-            $token = $user->createToken('auth_token')->plainTextToken;
             return response()->json([
                 'message' => 'Email verified and user logged in',
-                'access_token' => $token,
-                'token_type' => 'Bearer',
             ]);
         }
 
@@ -112,9 +113,42 @@ class AuthController extends Controller
             'message'      => 'Login successful',
             'access_token' => $token,
             'token_type'   => 'Bearer',
-            'user'         => $user,
+            'user'         => new UserResource(($user))
         ]);
     }
+
+    public function resendOtp(Request $request)
+{
+    $request->validate([
+        'email' => 'required|email|exists:users,email',
+    ]);
+
+    $user = User::where('email', $request->email)->first();
+
+    if (!$user) {
+        return response()->json(['message' => 'User not found with this email address.'], 404);
+    }
+
+    if ($user->email_verified_at) {
+        return response()->json(['message' => 'Email is already verified.'], 400);
+    }
+
+    // Generate new verification code
+    $verificationCode = rand(1000, 9999);
+    $user->verification_code = $verificationCode;
+    $user->save();
+
+    // Send email with new code
+    Mail::raw("Your new verification code is: $verificationCode", function ($message) use ($user) {
+        $message->to($user->email)
+                ->subject('New Email Verification Code');
+    });
+
+    return response()->json([
+        'message' => 'New OTP sent successfully. Please check your email.',
+        'user_id' => $user->id
+    ]);
+}
    // No Use
     public function forgotPasswordTokenBase(Request $request)
     {
@@ -173,6 +207,44 @@ class AuthController extends Controller
 
         return response()->json(['message' => 'Password reset successfully.']);
     }
+
+    public function updatePassword(Request $request)
+{
+    $user = $request->user(); 
+
+    if (!$user) {
+        return response()->json(['message' => 'Unauthenticated.'], 401);
+    }
+
+    // Validate input
+    $validator = Validator::make($request->all(), [
+        'current_password' => 'required|string',
+        'new_password' => 'required|string|min:6|confirmed',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json(['errors' => $validator->errors()], 422);
+    }
+
+    // Check current password
+    if (!Hash::check($request->current_password, $user->password)) {
+        return response()->json(['message' => 'Current password is incorrect.'], 400);
+    }
+
+    // Update to new password
+    $user->password = Hash::make($request->new_password);
+    $user->save();
+
+    // Optional: revoke all old tokens and issue a new one
+    $user->tokens()->delete();
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return response()->json([
+        'message' => 'Password updated successfully.',
+        'access_token' => $token,
+        'token_type' => 'Bearer',
+    ]);
+}
 
     public function forgotPassword(Request $request)
 {
@@ -268,5 +340,76 @@ public function logout(Request $request)
     return response()->json(['message' => 'Successfully logged out']);
 }
 
+public function updateProfile(Request $request)
+{
+    $user = $request->user();
+    if (!$user) {
+        return response()->json(['message' => 'Unauthenticated'], 401);
+    }
+
+    $validator = Validator::make($request->all(), [
+        'first_name' => 'sometimes|string|max:255|nullable',
+        'last_name' => 'sometimes|string|max:255|nullable',
+        'email' => 'sometimes|email|unique:users,email,'.$user->id,
+        'phone_number' => 'sometimes|string|max:15|nullable',
+        'avatar' => 'sometimes|image|mimes:jpeg,png,jpg,gif|max:2048',
+    ]);
+
+    if ($validator->fails()) {
+        return response()->json(['errors' => $validator->errors()], 422);
+    }
+
+    // Get only filled fields (ignore nulls)
+    $data = array_filter($request->only([
+       'first_name', 'last_name', 'email', 'phone_number'
+    ]), function($value) {
+        return $value !== null;
+    });
+
+   
+    if ($request->hasFile('avatar')) {
+        $avatar = $request->file('avatar');
+        $filename = 'avatar_'.$user->id.'_'.time().'.'.$avatar->getClientOriginalExtension();
+        $path = $avatar->storeAs('images/avatars', $filename, 'public');
+        $data['avatar'] = $path;
+        
+        // Delete old avatar if exists
+        if ($user->avatar && !str_contains($user->avatar, 'ui-avatars.com')) {
+            Storage::disk('public')->delete($user->avatar);
+        }
+    }
+
+    $user->update($data);
+
+    return response()->json([
+        'message' => 'Profile updated successfully',
+        'user' => new UserResource(($user))
+    ]);
+}
+
+public function getProfile(Request $request)
+{
+    $user = $request->user();
+
+    if (!$user) {
+        return response()->json(['message' => 'Unauthenticated'], 401);
+    }
+
+    $user->loadCount([
+        'surveys as completed_surveys' => fn ($q) => $q->where('status', 'completed'),
+        'surveys as incompleted_surveys' => fn ($q) => $q->where('status', '!=', 'completed'),
+    ]);
+    
+    $completedSurveys = $user->completed_surveys;
+    $incompletedSurveys = $user->incompleted_surveys;
+
+    return response()->json([
+        'message' => 'Fetched Profile data successfully',
+        'completed_surveys' => $completedSurveys,
+        'incompleted_surveys' => $incompletedSurveys,
+        'total_surveys' => $completedSurveys + $incompletedSurveys,
+        'user' => new UserResource(($user))
+    ]);
+}
 
 }

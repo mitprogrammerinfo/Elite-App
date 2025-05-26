@@ -28,6 +28,7 @@ class SurveyIntCat extends Model
     {
         return $this->hasMany(SurveyIntCatFeature::class);
     }
+  
 
     public function images(): HasMany
     {

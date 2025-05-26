@@ -1,7 +1,6 @@
 <?php
 
 namespace App\Models;
-//use\Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -20,6 +19,7 @@ class User extends Authenticatable
         'google_id',
         'avatar',
         'phone_number',
+        'email_verified_at',
         'address_line_1',
         'address_line_2',
         'city',
@@ -29,7 +29,10 @@ class User extends Authenticatable
         'verification_code'
     ];
     
-
+    public function surveys()
+    {
+        return $this->hasMany(Survey::class);
+    }
     protected $hidden = [
         'password',
         'remember_token',
@@ -43,18 +46,18 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    protected $appends = [
-        'avatar_url',
-    ];
+    // protected $appends = [
+    //     'avatar_url',
+    // ];
 
-    public function getAvatarUrlAttribute()
-    {
-        return $this->avatar ?? $this->defaultAvatarUrl();
-    }
+    // public function getAvatarUrlAttribute()
+    // {
+    //     return $this->avatar ?? $this->defaultAvatarUrl();
+    // }
 
-    protected function defaultAvatarUrl(): string
-    {
-        $name = urlencode($this->name ?? 'user');
-        return "https://ui-avatars.com/api/?name={$name}&color=7F9CF5&background=EBF4FF";
-    }
+    // protected function defaultAvatarUrl(): string
+    // {
+    //     $name = urlencode($this->name ?? 'user');
+    //     return "https://ui-avatars.com/api/?name={$name}&color=7F9CF5&background=EBF4FF";
+    // }
 }

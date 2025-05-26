@@ -19,4 +19,5 @@ class SurveyIntCatFeature extends Model
     {
         return $this->belongsTo(InteriorFeature::class);
     }
+    
 }
