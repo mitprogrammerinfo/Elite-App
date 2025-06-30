@@ -12,10 +12,12 @@ class ExteriorPhotoResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'label' => $this->label,
-            'image_path' =>  asset('storage/' . $this->image_path), 
+            'survey_id' => $this->survey_id,
+            'image_path' => asset('storage/' . $this->image_path),
+            'room_index' => $this->room_index,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];
     }
 }
+

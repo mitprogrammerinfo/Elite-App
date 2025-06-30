@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Auth;
+use App\Models\Survey;
 
 class AuthController extends Controller
 {
@@ -56,6 +58,8 @@ class AuthController extends Controller
             $message->to($user->email)
                     ->subject('Email Verification Code');
         });
+     
+
         $token = $user->createToken('auth_token')->plainTextToken;
         return response()->json([
             'message' => 'User registered successfully. Please check your email for the verification code.',
@@ -411,5 +415,59 @@ public function getProfile(Request $request)
         'user' => new UserResource(($user))
     ]);
 }
+
+ public function sendSurveyEmailToAdmin(Request $request)
+    {
+        $userId = Auth::id();
+        
+        if (!$userId) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $request->validate([
+            'survey_id' => 'required|exists:surveys,id'
+        ]);
+
+        try {
+            $survey = Survey::where('id', $request->survey_id)
+                ->where('user_id', $userId)
+                ->firstOrFail();
+
+            $user = User::findOrFail($userId);
+
+            // Prepare email data
+            $emailData = [
+                'username' => $user->first_name . ' ' . $user->last_name,
+                'survey_id' => $survey->id,
+                'survey_title' => $survey->title ?? 'Survey #' . $survey->id, // Fallback to survey ID if title is null
+                'user_id' => $userId,
+            ];
+
+            // Send email to admin
+            Mail::raw(
+                "New Survey Submission\n\n" .
+                "User: {$emailData['username']}\n" .
+                "User ID: {$emailData['user_id']}\n" .
+                "Survey ID: {$emailData['survey_id']}\n" .
+                "Survey Title: {$emailData['survey_title']}\n",
+                function ($message) use ($emailData) {
+                    $message->to('muhammadirfangill87@gmail.com')
+                            ->subject('New Survey Submission - ' . $emailData['survey_title']);
+                }
+            );
+
+            return response()->json([
+                'message' => 'Email sent to admin successfully',
+                'survey_id' => $survey->id,
+                'user_id' => $userId
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to send email to admin',
+                'details' => $e->getMessage()
+            ], 500);
+        }
+    }
 
 }

@@ -12,6 +12,7 @@ class SurveyResource extends JsonResource
         return [
             'survey_id' => $this->id,
             'status' => $this->status,
+            'type' => $this->type,
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
             'exterior_photos' => ExteriorPhotoResource::collection($this->exteriorPhotos),

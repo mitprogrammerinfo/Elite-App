@@ -10,7 +10,7 @@ class Survey extends Model
     // Remove SoftDeletes trait if you want only permanent deletion
     // use SoftDeletes;
     
-    protected $fillable = ['user_id', 'status'];
+    protected $fillable = ['user_id', 'type', 'status'];
 
     public function user()
     {
@@ -38,7 +38,12 @@ class Survey extends Model
                     ->using(SurveyExtFeature::class)
                     ->withTimestamps();
     }
-
+    
+     public function damageInspectionPhotos()
+    {
+        return $this->hasMany(DamageInspectionPhoto::class);
+    }
+    
    protected static function booted()
 {
     static::deleting(function ($survey) {

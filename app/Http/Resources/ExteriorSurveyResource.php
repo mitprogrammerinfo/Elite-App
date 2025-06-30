@@ -12,6 +12,7 @@ class ExteriorSurveyResource extends JsonResource
         return [
             'survey_id' => $this->id,
             'status' => $this->status,
+            'survey_type' => $this->type,
             'features' => $this->exteriorFeatures->map(function ($feature) {
                 return [
                     'id' => $feature->id,

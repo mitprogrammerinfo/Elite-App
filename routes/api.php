@@ -72,6 +72,7 @@ Route::get('/public-images', [SurveyController::class, 'getAllPublicImages']);
 
 Route::middleware('auth:sanctum')->get('/user/profile', [AuthController::class, 'getProfile']);
 Route::middleware('auth:sanctum')->get('/completed-surveys', [SurveyController::class, 'getCompletedSurveys']);
+Route::middleware('auth:sanctum')->post('/send-email-to-admin', [AuthController::class, 'sendSurveyEmailToAdmin']);
 
 
 
