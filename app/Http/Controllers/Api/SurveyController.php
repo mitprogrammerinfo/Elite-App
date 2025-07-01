@@ -25,63 +25,6 @@ use Storage;
 class SurveyController extends Controller
 {
 
-
-/*public function uploadExteriorPhotos(Request $request, Survey $survey)
-{
-    $userId = Auth::id();
-
-    if (!$userId) {
-        return response()->json(['error' => 'Unauthorized'], 401);
-    }
-    $request->validate([
-        'photos' => 'required|array|size:6',
-        'photos.*' => 'image|mimes:jpeg,png,jpg'
-    ]);
-    $survey = Survey::create([
-        'user_id' => $userId,
-        'status' => 'exterior_photos',
-    ]);
-
-    
-
-    $photoLabels = [
-        'address',
-        'front_elevation',
-        'right_elevation',
-        'left_elevation',
-        'rear',
-        'roof'
-    ];
-
-    $uploadedPhotos = [];
-
-    foreach ($request->file('photos') as $index => $photo) {
-        $label = $photoLabels[$index];
-        $filename = $label . '_' . time() . '.' . $photo->getClientOriginalExtension();
-        $path = $photo->storeAs('images/exterior_photos', $filename, 'public');
-
-        $photoModel = $survey->exteriorPhotos()->create([
-            'image_path' => $path,
-            'label' => $label
-        ]);
-
-        $uploadedPhotos[] = [
-            'label' => $label,
-            'image_path' => $path
-        ];
-    }
-
-    // Move survey to next stage
-    $survey->update(['status' => 'interior_selections']);
-
-    return response()->json([
-        'message' => 'Photos uploaded successfully',
-        'survey_id' => $survey->id,
-        'photos' => ExteriorPhotoResource::collection($survey->exteriorPhotos)
-
-    ]);
-}*/
-
 public function uploadExteriorPhotos(Request $request, Survey $survey=null)
     {
         $userId = Auth::id();
@@ -245,7 +188,6 @@ public function uploadExteriorPhotos(Request $request, Survey $survey=null)
     }
 }
 
-
 public function getInteriorCategories()
 {
     $categories = InteriorCategory::all();
@@ -258,73 +200,6 @@ public function getInteriorCategoriesFeatures()
     return response()->json($features);
 }
 
-/*public function saveInteriorSurvey(Request $request, Survey $survey)
-{
-    $request->validate([
-        'categories' => 'required|array',
-        'categories.*.category_id' => 'required|exists:interior_categories,id',
-        'categories.*.images' => 'required|array|min:1',
-        'categories.*.images.*' => 'image|mimes:jpeg,png,jpg|max:2048',
-        'categories.*.features' => 'required|array|min:1',
-        'categories.*.features.*' => 'required|exists:interior_features,id',
-    ]);
-
-    DB::beginTransaction();
-    try {
-        $uploadedData = [
-            'survey_id' => $survey->id,
-            'categories' => [],
-        ];
-
-        foreach ($request->categories as $categoryData) {
-            $surveyCategory = SurveyIntCat::create([
-                'survey_id' => $survey->id,
-                'category_id' => $categoryData['category_id']
-            ]);
-
-            // Store images and capture their IDs
-            $images = [];
-            foreach ($categoryData['images'] as $image) {
-                $path = $image->store('survey/interior/categories', 'public');
-                $imageModel = $surveyCategory->images()->create(['image_path' => $path]);
-                $images[] = [
-                    'id' => $imageModel->id,  // Capture the ID
-                    'url' => asset('storage/' . $path)
-                ];
-            }
-
-            // Store features
-            $features = [];
-            foreach ($categoryData['features'] as $featureId) {
-                SurveyIntCatFeature::create([
-                    'survey_int_cat_id' => $surveyCategory->id,
-                    'feature_id' => $featureId
-                ]);
-                $features[] = $featureId;
-            }
-
-            $uploadedData['categories'][] = [
-                'category_id' => $categoryData['category_id'],
-                'images' => $images,  // Now includes IDs
-                'features' => $features,
-            ];
-        }
-        
-        $survey->update(['status' => 'exterior_features']);
-        DB::commit();
-
-        return response()->json([
-            'message' => 'Interior survey saved successfully',
-            'data' => InteriorSurveyCategoryResource::collection($survey->interiorCategories)
-        ]);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return response()->json([
-            'error' => 'Failed to save interior survey: ' . $e->getMessage()
-        ], 500);
-    }
-}*/
 public function saveInteriorSurvey(Request $request, Survey $survey)
 {
     $request->validate([
@@ -400,54 +275,6 @@ public function getExteriorFeatures()
         $features = ExteriorFeature::all();
         return response()->json($features);
     }
-
-/*
-    public function saveExteriorSurvey(Request $request, Survey $survey)
-{
-    $request->validate([
-        'features' => 'required|array',
-        'features.*' => 'exists:exterior_features,id',
-        'images' => 'required|array|min:1',
-        'images.*' => 'image|mimes:jpeg,png,jpg|max:2048',
-    ]);
-
-    DB::beginTransaction();
-
-    try {
-        // Associate features directly with survey
-        $survey->exteriorFeatures()->sync($request->features);
-
-        $uploadedImages = [];
-        foreach ($request->images as $image) {
-            $filename = 'exterior_'.$survey->id.'_'.time().'_'.uniqid().'.'.$image->getClientOriginalExtension();
-            $path = $image->storeAs('exterior_images', $filename, 'public');
-
-          $uploadedImages[] = $path;
-            $survey->exteriorImages()->create([
-                'image_path' => $path,
-            ]);
-        }
-
-        DB::commit();
-
-        $survey->update(['status' => 'completed']);
-
-        return response()->json([
-            'message' => 'Exterior survey saved successfully',
-            'data' => new ExteriorSurveyResource($survey),
-            'timestamp' => now()->toDateTimeString()
-        ]);
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return response()->json([
-            'error' => 'Failed to save exterior survey',
-            'details' => $e->getMessage(),
-            'trace' => config('app.debug') ? $e->getTrace() : null
-        ], 500);
-    }
-}*/
-
 public function saveExteriorSurvey(Request $request, Survey $survey)
 {
     $request->validate([
@@ -497,8 +324,6 @@ public function saveExteriorSurvey(Request $request, Survey $survey)
         ], 500);
     }
 }
-
-
 
 public function getCompletedSurveys(Request $request) 
 {
@@ -593,6 +418,103 @@ public function getSurveyStatus(Request $request, $surveyId)
     ]);
 }
 
+ public function fetchDamageInspectionSurveys(Request $request)
+    {
+        $userId = Auth::id();
+        if (!$userId) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        try {
+            // Fetch damage surveys for the authenticated user
+            $surveys = Survey::where('user_id', $userId)
+                ->where('type', 'damage')
+                ->with(['damageInspectionPhotos' => function ($query) {
+                    $query->select('id', 'survey_id', 'image_path', 'room_index', 'created_at', 'updated_at');
+                }])
+                ->get();
+
+            // Transform surveys to include grouped photos
+            $response = $surveys->map(function ($survey) {
+                $groupedPhotos = $survey->damageInspectionPhotos
+                    ->groupBy('room_index')
+                    ->map(function ($photos) {
+                        return DamageInspectionPhotoResource::collection($photos);
+                    });
+
+                return [
+                    'id' => $survey->id,
+                    'user_id' => $survey->user_id,
+                    'type' => $survey->type,
+                    'status' => $survey->status,
+                    'created_at' => $survey->created_at,
+                    'updated_at' => $survey->updated_at,
+                    'photos' => $groupedPhotos,
+                ];
+            });
+
+            return response()->json([
+                'message' => 'Damage inspection surveys retrieved successfully',
+                'surveys' => $response,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'error' => 'Failed to fetch damage inspection surveys: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+public function fetchDamageInspectionSurveysById(Request $request, $surveyId = null)
+{
+    $userId = Auth::id();
+    if (!$userId) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+
+    try {
+        $query = Survey::where('user_id', $userId)->where('type', 'damage')
+            ->with(['damageInspectionPhotos' => function ($query) {
+                $query->select('id', 'survey_id', 'image_path', 'room_index', 'created_at', 'updated_at');
+            }]);
+
+        if ($surveyId) {
+            $query->where('id', $surveyId);
+        }
+
+        $surveys = $query->get();
+
+        if ($surveyId && $surveys->isEmpty()) {
+            return response()->json(['error' => 'Survey not found'], 404);
+        }
+
+        $response = $surveys->map(function ($survey) {
+            $groupedPhotos = $survey->damageInspectionPhotos
+                ->groupBy('room_index')
+                ->map(function ($photos) {
+                    return DamageInspectionPhotoResource::collection($photos);
+                });
+
+            return [
+                'id' => $survey->id,
+                'user_id' => $survey->user_id,
+                'type' => $survey->type,
+                'status' => $survey->status,
+                'created_at' => $survey->created_at,
+                'updated_at' => $survey->updated_at,
+                'photos' => $groupedPhotos,
+            ];
+        });
+
+        return response()->json([
+            'message' => 'Damage inspection surveys retrieved successfully',
+            'surveys' => $response,
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'error' => 'Failed to fetch damage inspection surveys: ' . $e->getMessage(),
+        ], 500);
+    }
+}
 public function updateSurvey(Request $request, $surveyId)
 {
     $userId = Auth::id();
@@ -622,8 +544,6 @@ public function updateSurvey(Request $request, $surveyId)
             return response()->json(['error' => 'Invalid update type'], 400);
     }
 }
-
-
 
 protected function updateExteriorPhotos(Request $request, Survey $survey)
 {
@@ -765,7 +685,6 @@ protected function updateInteriorSurvey(Request $request, Survey $survey)
 }
 
 
-
 protected function updateExteriorSurvey(Request $request, Survey $survey) 
 {
     $request->validate([
@@ -857,10 +776,6 @@ protected function updateExteriorSurvey(Request $request, Survey $survey)
     }
 }
 
-
-
-
-
 public function deleteSurvey($id)
 {
     $survey = Survey::findOrFail($id);
@@ -894,8 +809,6 @@ public function getAllPublicImages()
         'images' => $imageUrls,
     ]);
 }
-
-
 
 }
 

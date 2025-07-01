@@ -39,6 +39,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/surveys/incomplete', [SurveyController::class, 'getIncompleteSurveys']);
     // Survey Management
     Route::prefix('surveys')->controller(SurveyController::class)->group(function () {
+        Route::get('/damage',  'fetchDamageInspectionSurveys');
+        Route::get('/damage/{surveyId?}',  'fetchDamageInspectionSurveysById');
         Route::get('/', 'index');
         Route::post('/', 'store');
         Route::get('/{survey}', 'show');
@@ -64,6 +66,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/delete-survey/{surveyId}', 'deleteSurvey');
 
        Route::get('/single-survey/{surveyId}', 'getSurveyById');
+
+      
        
     });
 });
